@@ -1,45 +1,64 @@
 #!/bin/bash
 
 LOG_FILE="mqtt_capture.log"
+PYTHON_SCRIPT="plot_mqtt.py"
+PROGRAM="./mqtt_subscribe_emqx_linux"
 
-echo "====================================="
-echo " PRACTICA MQTT - SISTEMAS OPERATIVOS"
-echo "====================================="
+echo "Introduce el tiempo máximo de captura (segundos):"
+read MAX_TIME
 
-echo "Introduce el tiempo de captura en segundos:"
-read tiempo
+if ! [[ "$MAX_TIME" =~ ^[0-9]+$ ]]; then
+    echo "Error: debes introducir un número entero."
+    exit 1
+fi
 
-echo ""
-echo "Iniciando cliente MQTT..."
+if [ ! -f "$PROGRAM" ]; then
+    echo "Error: no existe $PROGRAM"
+    exit 1
+fi
 
-# Ejecutar cliente MQTT en background
-./mqtt_subscribe_emqx_linux > "$LOG_FILE" 2>&1 &
+chmod +x "$PROGRAM"
 
+echo "Iniciando captura MQTT durante $MAX_TIME segundos..."
+
+$PROGRAM > "$LOG_FILE" 2>&1 &
 PID=$!
 
-echo "Proceso iniciado con PID: $PID"
+echo "Proceso lanzado con PID: $PID"
 
-# Esperar el tiempo indicado
-sleep "$tiempo"
+SECONDS_PASSED=0
 
-echo ""
-echo "Finalizando proceso..."
+while kill -0 "$PID" 2>/dev/null && [ "$SECONDS_PASSED" -lt "$MAX_TIME" ]; do
+    sleep 1
+    SECONDS_PASSED=$((SECONDS_PASSED + 1))
+done
 
-# Enviar señales
-kill -SIGINT $PID 2>/dev/null
-sleep 1
+if kill -0 "$PID" 2>/dev/null; then
+    echo "Tiempo máximo alcanzado. Enviando SIGINT..."
+    kill -SIGINT "$PID"
+    sleep 2
+fi
 
-kill -SIGTERM $PID 2>/dev/null
-sleep 1
+if kill -0 "$PID" 2>/dev/null; then
+    echo "Proceso aún activo. Enviando SIGTERM..."
+    kill -SIGTERM "$PID"
+    sleep 2
+fi
 
-kill -SIGKILL $PID 2>/dev/null
+if kill -0 "$PID" 2>/dev/null; then
+    echo "Proceso no responde. Enviando SIGKILL..."
+    kill -SIGKILL "$PID"
+fi
 
-echo "Proceso detenido."
+wait "$PID" 2>/dev/null
 
-echo ""
-echo "Ejecutando script Python..."
+echo "Captura finalizada."
+echo "Ejecutando análisis en Python..."
 
-python3 plot_mqtt.py
+python3 - <<'PY'
+print("Hola mundo desde Python ejecutado dentro de Bash")
+PY
 
-echo ""
-echo "Practica finalizada."
+python3 "$PYTHON_SCRIPT"
+
+echo "Proceso completo."
