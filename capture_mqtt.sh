@@ -1,56 +1,56 @@
 #!/bin/bash
 
-LOG_FILE="mqtt_capture.log"
-PYTHON_SCRIPT="plot_mqtt.py"
-PROGRAM="./mqtt_subscribe_emqx_linux"
+archivo_log="mqtt_capture.log"
+script_python="plot_mqtt.py"
+programa="./mqtt_subscribe_emqx_linux"
 
 echo "Introduce el tiempo máximo de captura (segundos):"
-read MAX_TIME
+read tiempo_maximo
 
-if ! [[ "$MAX_TIME" =~ ^[0-9]+$ ]]; then
+if ! [[ "$tiempo_maximo" =~ ^[0-9]+$ ]]; then
     echo "Error: debes introducir un número entero."
     exit 1
 fi
 
-if [ ! -f "$PROGRAM" ]; then
-    echo "Error: no existe $PROGRAM"
+if [ ! -f "$programa" ]; then
+    echo "Error: no existe $programa"
     exit 1
 fi
 
-chmod +x "$PROGRAM"
+chmod +x "$programa"
 
-echo "Iniciando captura MQTT durante $MAX_TIME segundos..."
+echo "Iniciando captura MQTT durante $tiempo_maximo segundos..."
 
-$PROGRAM > "$LOG_FILE" 2>&1 &
-PID=$!
+$programa > "$archivo_log" 2>&1 &
+pid_proceso=$!
 
-echo "Proceso lanzado con PID: $PID"
+echo "Proceso lanzado con PID: $pid_proceso"
 
-SECONDS_PASSED=0
+segundos_transcurridos=0
 
-while kill -0 "$PID" 2>/dev/null && [ "$SECONDS_PASSED" -lt "$MAX_TIME" ]; do
+while kill -0 "$pid_proceso" 2>/dev/null && [ "$segundos_transcurridos" -lt "$tiempo_maximo" ]; do
     sleep 1
-    SECONDS_PASSED=$((SECONDS_PASSED + 1))
+    segundos_transcurridos=$((segundos_transcurridos + 1))
 done
 
-if kill -0 "$PID" 2>/dev/null; then
-    echo "Tiempo máximo alcanzado. Enviando SIGINT..."
-    kill -SIGINT "$PID"
+if kill -0 "$pid_proceso" 2>/dev/null; then
+    echo "Tiempo máximo alcanzado. Enviando señal SIGINT..."
+    kill -SIGINT "$pid_proceso"
     sleep 2
 fi
 
-if kill -0 "$PID" 2>/dev/null; then
-    echo "Proceso aún activo. Enviando SIGTERM..."
-    kill -SIGTERM "$PID"
+if kill -0 "$pid_proceso" 2>/dev/null; then
+    echo "El proceso sigue activo. Enviando señal SIGTERM..."
+    kill -SIGTERM "$pid_proceso"
     sleep 2
 fi
 
-if kill -0 "$PID" 2>/dev/null; then
-    echo "Proceso no responde. Enviando SIGKILL..."
-    kill -SIGKILL "$PID"
+if kill -0 "$pid_proceso" 2>/dev/null; then
+    echo "El proceso no responde. Enviando señal SIGKILL..."
+    kill -SIGKILL "$pid_proceso"
 fi
 
-wait "$PID" 2>/dev/null
+wait "$pid_proceso" 2>/dev/null
 
 echo "Captura finalizada."
 echo "Ejecutando análisis en Python..."
@@ -59,6 +59,6 @@ python3 - <<'PY'
 print("Hola mundo desde Python ejecutado dentro de Bash")
 PY
 
-python3 "$PYTHON_SCRIPT"
+python3 "$script_python"
 
 echo "Proceso completo."
