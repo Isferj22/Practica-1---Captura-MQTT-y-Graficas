@@ -24,6 +24,7 @@ El script de Bash controla la captura y el tiempo de ejecución, mientras que el
 ## 3. Estructura del proyecto
 
 El proyecto tiene la siguiente estructura de archivos:
+
 practica_mqtt/
 │
 ├── capture_mqtt.sh
